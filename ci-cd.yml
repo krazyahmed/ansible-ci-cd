@@ -1,0 +1,51 @@
+---
+- name: Installing necessary s/w
+  hosts: servers
+  tasks:
+   - name: Installing s/w
+     apt:
+      name: "{{item.a}}"
+      state: present
+      update_cache: "{{item.b}}"
+     with_items:
+      - {a: default-jdk,b: yes}
+      - {a: git,b: no}
+      - {a: maven,b: no}
+      - {a: tomcat7,b: no}
+- name: Continuous Download,Continuous Build
+  hosts: devserver
+  tasks:
+   - name: Downlaod from git remote repo
+     git:
+      repo: https://github.com/selenium-saikrishna/maven.git
+      dest: /home/ubuntu/git
+   - name: Create an artifact from the code that is downloaded
+     shell: cd /home/ubuntu/git;mvn package
+   - name: Fetch artifact from dev server to controller
+     fetch:
+      src: /home/ubuntu/git/webapp/target/webapp.war
+      dest: /home/ubuntu
+- name: Continuous Deployment and continuous Testing
+  hosts: qaserver
+  tasks:
+   - name: Copy the artifact into tomcat on qaserver
+     copy:
+      src: /home/ubuntu/172.31.42.49/home/ubuntu/git/webapp/target/webapp.war
+      dest: /var/lib/tomcat7/webapps/qaenv.war
+   - name: Download the testing code from git hub
+     git:
+      repo: https://github.com/selenium-saikrishna/TestingOnAWS.git
+      dest: /home/ubuntu/testing-git
+   - name: Run the selenium programs
+     shell: java -jar /home/ubuntu/testing-git/testing.jar
+- name: Continuous Delivery
+  hosts: prodserver
+  tasks:
+   - name: Copy artifact into tomcat on prodserver
+     copy:     
+      src: /home/ubuntu/172.31.42.49/home/ubuntu/git/webapp/target/webapp.war
+      dest: /var/lib/tomcat7/webapps/prodenv.war
+...
+ 
+
+
